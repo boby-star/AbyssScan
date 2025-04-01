@@ -1,0 +1,261 @@
+﻿@{
+    ViewData["Title"] = "Fuzzing Configuration";
+    var directories = ViewBag.Dictionaries as IEnumerable<string>;
+    var userAgents = ViewBag.UserAgents as IEnumerable<string>;
+}
+
+<h2 style="margin-left: 850px; margin-top: 30px">Налаштування перебору директорій</h2>
+
+<form id="fuzzingForm">
+    <div>
+        <label for="baseUrl">Цільова URL:</label>
+        <input type="text" id="baseUrl" name="baseUrl" placeholder="http://example.com" required/>
+    </div>
+    <div>
+        <label for="dictionaryName">Виберіть словник:</label>
+        <select id="dictionaryName" name="dictionaryName">
+            @foreach (var dict in directories ?? Enumerable.Empty<string>())
+            {
+                <option value="@dict">@dict</option>
+            }
+        </select>
+    </div>
+
+    <div>
+        <label for="depth">Глибина пошуку:</label>
+        <input type="number" id="depth" name="depth" min="1" value="1" />
+    </div>
+    <div>
+        <label for="delay">Затримка (ms): 2000 </label>
+        <input type="hidden" id="delay" name="delay" min="2000" value="2000" />
+    </div>
+    <div>
+        <label>Кількість потоків:</label>
+        <input type="number" name="threads" min="1" max="100" value="3"/>
+    </div>
+    <div>
+        <label for="selectedUserAgent">User-Agent:</label>
+        <select id="selectedUserAgent" name="selectedUserAgent" style="width:160px;">
+            @foreach (var ua in userAgents ?? Enumerable.Empty<string>())
+            {
+                <option value="@ua">@ua</option>
+            }
+        </select>
+    </div>
+    <div>
+        <button type="button" id="startButton" style="padding: 5px 15px; font-size: 14px; border: none;
+         border-radius: 4px; background-color: #7c5cff;
+         color: white; cursor: pointer;">
+            Старт
+        </button>
+        <button type="button" id="stopButton" style="padding: 5px 15px; font-size: 14px; border: none;
+         border-radius: 4px; background-color: #7c5cff;
+         color: white; cursor: pointer;">
+            Стоп
+        </button>
+    </div>
+</form>
+
+<h3>Logs</h3>
+<div id="logsContainer" style="background:#d9d9d9;
+    border:1px solid #3a3a52; border-radius:8px; padding:10px;
+    margin-bottom:20px; height:260px; overflow-y:auto; color:#b5bdb7;
+    font-family:monospace; font-size:14px;">
+    <div id="logs">
+        <p style="text-align:center; font-style:italic; color:#626363;">Поки що немає логів</p>
+    </div>
+</div>
+
+<h3 style="display: inline-block; margin-right: 15px;">Знайдені директорії</h3>
+
+<button type="button" id="submitSelected"
+        style="padding: 8px 20px; font-size: 14px; border: none;
+         border-radius: 5px; background-color: #7c5cff;
+         color: white; cursor: pointer; transition: background-color 0.3s;">
+    Надіслати вибрані
+</button>
+
+<div id="foundDirsContainer"
+     style="background: #d9d9d9;
+            border: 1px solid #3a3a52;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            height: 260px;
+            overflow-y: auto;
+            color: #f5f5f5;
+            font-family: Arial, sans-serif;
+            font-size: 14px;">
+
+    <form id="directoryForm">
+        <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: flex-end; padding: 5px 0; border-bottom: 1px solid #3a3a52;">
+            <label for="selectAll" style="color: #e0e0e0; font-weight: bold; cursor: pointer; margin: 0;">
+                Вибрати всі
+            </label>
+            <input type="checkbox" id="selectAll" style="cursor: pointer;" />
+        </div>
+        <ul id="foundDirs" style="list-style: none; padding: 0; margin: 0; text-align: right;">
+            <li style="text-align: center; font-style: italic; color: #888;">
+                Поки що немає знайдених директорій
+            </li>
+        </ul>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        const startButton = document.getElementById("startButton");
+        const stopButton = document.getElementById("stopButton");
+        const logsDiv = document.getElementById('logs');
+        const foundDirsUL = document.getElementById('foundDirs');
+        const submitSelectionButton = document.getElementById('submitSelected');
+        const selectAllCheckbox = document.getElementById('selectAll');
+
+        function colorizeLogLine(line) {
+            if (line.includes(" 200")) {
+                return `<span style="color:green">${line}</span>`;
+            } else if (line.includes(" 401")) {
+                return `<span style="color:purple">${line}</span>`;
+            } else if (line.includes(" 403")) {
+                return `<span style="color:orange">${line}</span>`;
+            } else if (line.includes(" 301")) {
+                return `<span style="color:blue">${line}</span>`;
+            } else if (line.includes(" 302")) {
+                return `<span style="color:teal">${line}</span>`;
+            } else if (line.includes(" 303")) {
+                return `<span style="color:darkcyan">${line}</span>`;
+            } else if (line.includes(" 304")) {
+                return `<span style="color:gray">${line}</span>`;
+            } else if (line.includes(" 307")) {
+                return `<span style="color:darkblue">${line}</span>`;
+            } else if (line.includes(" 308")) {
+                return `<span style="color:navy">${line}</span>`;
+            } else if (line.includes(" 404")) {
+                return `<span style="color:red">${line}</span>`;
+            } else {
+                return `<span style="color:#3d3d3d">${line}</span>`;
+            }
+        }
+
+        function renderFoundDirectories(dirs) {
+            if (!dirs || dirs.length === 0) {
+                foundDirsUL.innerHTML = `
+                  <li style="text-align:center; font-style:italic; color:#888;">
+                    Директорій не знайдено
+                  </li>`;
+                return;
+            }
+
+            let html = "";
+            dirs.forEach((dir, index) => {
+            html += `
+                <li style="display: flex; align-items: center; justify-content: flex-end; padding: 8px 0; border-bottom: 1px solid #3a3a52;">
+                  <label for="dir_${index}" style="
+                         color: #575757;
+                         font-weight: normal;
+                         margin-right: 10px;
+                         text-align: right;">
+                    ${dir}
+                  </label>
+                  <input type="checkbox" id="dir_${index}" name="selectedDirs"
+                         value="${dir}" style="cursor: pointer;" />
+                </li>`;
+            });
+
+            foundDirsUL.innerHTML = html;
+        }
+
+        selectAllCheckbox.addEventListener("change", function (event) {
+            const checkboxes = document.querySelectorAll("#foundDirs input[type='checkbox']");
+            checkboxes.forEach(cb => {
+                cb.checked = event.target.checked;
+            });
+        });
+
+        submitSelectionButton.addEventListener("click", () => {
+            const selectedDirs = Array.from(
+                document.querySelectorAll("#foundDirs input[type='checkbox']:checked")
+            ).map(cb => cb.value);
+
+            if (selectedDirs.length === 0) {
+                alert("Будь ласка, виберіть хоча б одну директорію.");
+                return;
+            }
+
+            fetch('/Actions/ProcessSelectedDirectories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ directories: selectedDirs, threads: 3 })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("Помилка під час обробки запиту");
+                return response.json();
+            })
+            .then(data => {
+                alert("Вибрані директорії успішно передано!\n\n" + JSON.stringify(data, null, 2));
+            })
+            .catch(error => {
+                console.error("Помилка:", error);
+                alert("Не вдалося передати вибрані директорії.");
+            });
+        });
+
+        startButton.addEventListener("click", function () {
+            const formData = new FormData(document.getElementById("fuzzingForm"));
+
+            fetch('/Fuzzing/StartFuzzing', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("Помилка на сервері");
+                return response.json();
+            })
+            .then(data => {
+                logsDiv.innerHTML = `<span style="color:#888;">Сканування розпочато...</span><br/>`;
+                logsDiv.innerHTML += `<span style="color:#888;">${data.message}</span><br/>`;
+
+                renderFoundDirectories(data.found);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                logsDiv.innerText = "Помилка при запуску сканування.";
+            });
+        });
+
+        stopButton.addEventListener("click", function () {
+            fetch('/Fuzzing/StopFuzzing', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                logsDiv.innerHTML += `<br/><span style="color:#888;">Сканування зупинено.</span><br/>`;
+                renderFoundDirectories(data.found);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                logsDiv.innerText = "Помилка при зупинці сканування.";
+            });
+        });
+
+        setInterval(function () {
+            fetch('/Fuzzing/GetLogs')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.logs && data.logs.length > 0) {
+                        let colored = data.logs
+                            .map(line => colorizeLogLine(line))
+                            .join('\n');
+                        logsDiv.innerHTML = '<pre>' + colored + '</pre>';
+                    } else {
+                        logsDiv.innerHTML = '<p>Поки немає логів...</p>';
+                    }
+                })
+                .catch(err => console.error('Error fetching logs:', err));
+        }, 2000);
+    </script>
+}
+

@@ -1,0 +1,13 @@
+{
+  "UserAgent": {
+    "FilePath": "Infrastructure/Dictionaries/user-agents.txt"
+  },
+  "Dictionaries": {
+    "Fuzzing": {
+      "Darkweb2017-top10000": "Infrastructure/Dictionaries/darkweb2017-top10000.txt",
+      "Directory-big": "Infrastructure/Dictionaries/directory-big.txt",
+      "WordPress-dirs": "Infrastructure/Dictionaries/WordPress-dirs.txt",
+      "dict": "Infrastructure/Dictionaries/dict.txt"
+    }
+  }
+}

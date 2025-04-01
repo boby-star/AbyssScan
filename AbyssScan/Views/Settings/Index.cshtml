@@ -1,0 +1,71 @@
+﻿@model IEnumerable<string>
+@{
+    ViewData["Title"] = "Словники для фаззингу";
+}
+
+<h2 style="text-align: center; margin-top: 30px;">Словники для фаззингу</h2>
+
+<div style="display: flex; justify-content: center; margin-top: 20px;">
+    <div style="width: 30%; margin-right: 20px;">
+        <h3 style="margin-left: 220px">Доступні словники</h3>
+        <ul style="list-style-type: none; padding: 0;">
+            @foreach (var dict in Model)
+            {
+                <li style="margin-bottom: 10px;">
+                    <button class="dict-button" data-dict="@dict"
+                            style="width: 100%; padding: 10px; background: #7c5cff; color: white; border: none; border-radius: 15px; cursor: pointer;">
+                        @dict
+                    </button>
+                </li>
+            }
+        </ul>
+    </div>
+
+    <div style="width: 60%;">
+        <h3>Вміст вибраного словника</h3>
+        <div id="dictContainer" style="height: 400px; background: #e0e0e0; border: 1px solid #444; border-radius: 8px; padding: 15px; overflow-y: auto; color: #2d2d44 ; font-family: monospace; font-size: 14px;">
+            <p style="text-align: center; color: #888;">Оберіть словник, щоб переглянути його вміст.</p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const buttons = document.querySelectorAll('.dict-button');
+            const dictContainer = document.getElementById('dictContainer');
+
+            buttons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const dictName = this.getAttribute('data-dict');
+
+                    dictContainer.innerHTML = '<p style="text-align: center; color: #888;">Завантаження...</p>';
+
+                    fetch(`/Settings/GetDictionaryContent?dictName=${encodeURIComponent(dictName)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                dictContainer.innerHTML = '';
+
+                                const pre = document.createElement('pre');
+                                pre.style.whiteSpace = 'pre-wrap';
+                                pre.style.wordBreak = 'break-word';
+
+                                pre.textContent = data.entries
+                                    .map((entry, index) => `${index + 1}. ${entry}`)
+                                    .join('\n');
+
+                                dictContainer.appendChild(pre);
+                            } else {
+                                dictContainer.innerHTML = `<p style="color: red; text-align: center;">Помилка: ${data.error}</p>`;
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error fetching dictionary content:', err);
+                            dictContainer.innerHTML = `<p style="color: red; text-align: center;">Помилка завантаження даних.</p>`;
+                        });
+                });
+            });
+        });
+    </script>
+}

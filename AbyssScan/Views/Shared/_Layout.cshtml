@@ -1,0 +1,88 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Abyss Scan</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/AbyssScan.styles.css" asp-append-version="true" />
+    <style>
+        body {
+            display: flex;
+            background-color: #ffffff;
+            color: #222222;
+        }
+        #sidebar {
+            width: 250px;
+            background-color: #f0f0f0;
+            height: 100vh;
+            padding: 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        #sidebar a {
+            color: #0056b3;
+            display: block;
+            margin-bottom: 10px;
+            text-decoration: none;
+        }
+        #sidebar a:hover {
+            color: #000000;
+        }
+        #content {
+            margin-left: 250px;
+            flex-grow: 1;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            background-color: #eaeaea;
+            color: #333;
+            padding: 10px;
+        }
+        h2, h3 {
+            color: #0056b3;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #graphContainer {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <img src="/logo-scan.png" alt="Abyss Scan" class="me-2" style="height: 200px"/>
+            <a asp-controller="Fuzzing" asp-action="Index">Фаззинг</a>
+            <a asp-controller="Actions" asp-action="Index">Дії над директоріями</a>
+            <a asp-controller="Settings" asp-action="Index">Налаштування</a>
+    </div>
+    <div id="content">
+        <header style="border-radius: 20px">
+            <h1>Abyss Scan</h1>
+        </header>
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
